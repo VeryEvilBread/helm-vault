@@ -82,7 +82,7 @@ def parse_args(args):
 
     # Install Help
     install = subparsers.add_parser("install", help="Wrapper that decrypts YAML files before running helm install")
-    install.add_argument("-f", "--values", type=str, dest="yaml_files", nargs="+", help="The encrypted YAML file to decrypt on the fly")
+    install.add_argument("-f", "--values", type=str, dest="yaml_files", nargs="*", help="The encrypted YAML file to decrypt on the fly")
     install.add_argument("-d", "--deliminator", type=str, help="The secret deliminator used when parsing. Default: \"changeme\"")
     install.add_argument("-vt", "--vaulttemplate", type=str, help="Substring with path to vault key instead of deliminator. Default: \"VAULT:\"")
     install.add_argument("-mp", "--mountpoint", type=str, help="The Vault Mount Point Default: \"secret/data\"")
@@ -93,7 +93,7 @@ def parse_args(args):
 
     # Template Help
     template = subparsers.add_parser("template", help="Wrapper that decrypts YAML files before running helm install")
-    template.add_argument("-f", "--values", type=str, dest="yaml_files", nargs="+", help="The encrypted YAML file to decrypt on the fly")
+    template.add_argument("-f", "--values", type=str, dest="yaml_files", nargs="*", help="The encrypted YAML file to decrypt on the fly")
     template.add_argument("-d", "--deliminator", type=str, help="The secret deliminator used when parsing. Default: \"changeme\"")
     template.add_argument("-vt", "--vaulttemplate", type=str, help="Substring with path to vault key instead of deliminator. Default: \"VAULT:\"")
     template.add_argument("-mp", "--mountpoint", type=str, help="The Vault Mount Point Default: \"secret/data\"")
@@ -103,7 +103,7 @@ def parse_args(args):
 
     # Upgrade Help
     upgrade = subparsers.add_parser("upgrade", help="Wrapper that decrypts YAML files before running helm install")
-    upgrade.add_argument("-f", "--values", type=str, dest="yaml_files", nargs="+", help="The encrypted YAML file to decrypt on the fly")
+    upgrade.add_argument("-f", "--values", type=str, dest="yaml_files", nargs="*", help="The encrypted YAML file to decrypt on the fly")
     upgrade.add_argument("-d", "--deliminator", type=str, help="The secret deliminator used when parsing. Default: \"changeme\"")
     upgrade.add_argument("-vt", "--vaulttemplate", type=str, help="Substring with path to vault key instead of deliminator. Default: \"VAULT:\"")
     upgrade.add_argument("-mp", "--mountpoint", type=str, help="The Vault Mount Point Default: \"secret/data\"")
@@ -113,7 +113,7 @@ def parse_args(args):
 
     # Lint Help
     lint = subparsers.add_parser("lint", help="Wrapper that decrypts YAML files before running helm install")
-    lint.add_argument("-f", "--values", type=str, dest="yaml_files", nargs="+", help="The encrypted YAML file to decrypt on the fly")
+    lint.add_argument("-f", "--values", type=str, dest="yaml_files", nargs="*", help="The encrypted YAML file to decrypt on the fly")
     lint.add_argument("-d", "--deliminator", type=str, help="The secret deliminator used when parsing. Default: \"changeme\"")
     lint.add_argument("-vt", "--vaulttemplate", type=str, help="Substring with path to vault key instead of deliminator. Default: \"VAULT:\"")
     lint.add_argument("-mp", "--mountpoint", type=str, help="The Vault Mount Point Default: \"secret/data\"")
@@ -123,7 +123,7 @@ def parse_args(args):
 
     # Diff Help
     diff = subparsers.add_parser("diff", help="Wrapper that decrypts YAML files before running helm diff")
-    diff.add_argument("-f", "--values", type=str, dest="yaml_files", nargs="+", help="The encrypted YAML file to decrypt on the fly")
+    diff.add_argument("-f", "--values", type=str, dest="yaml_files", nargs="*", help="The encrypted YAML file to decrypt on the fly")
     diff.add_argument("-d", "--deliminator", type=str, help="The secret deliminator used when parsing. Default: \"changeme\"")
     diff.add_argument("-vt", "--vaulttemplate", type=str, help="Substring with path to vault key instead of deliminator. Default: \"VAULT:\"")
     diff.add_argument("-mp", "--mountpoint", type=str, help="The Vault Mount Point Default: \"secret/data\"")
