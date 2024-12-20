@@ -366,12 +366,10 @@ def main(argv=None):
     yaml.preserve_quotes = True
     secret_data = load_secret(args) if args.action == 'enc' else None
 
-    # Объединение всех данных из файлов
     merged_data = {}
     if yaml_files:
         for yaml_file in yaml_files:
             data = load_yaml(yaml_file)
-            # Функция для рекурсивного слияния словарей
             def merge_dicts(dict1, dict2):
                 for key, value in dict2.items():
                     if key in dict1:
@@ -388,37 +386,34 @@ def main(argv=None):
     for path, key, value in dict_walker(envs.secret_delim, merged_data, args, envs, secret_data):
         print("Done")
     
-    decode_file = '.'.join(filter(None, [yaml_files[0], envs.environment, 'dec'])) if yaml_files else None
+    decode_file = '.'.join(filter(None, [yaml_files[0], envs.environment, 'dec']))
 
     if action == "dec":
-       if decode_file:
-            yaml.dump(merged_data, open(decode_file, "w"))
-            print("Done Decrypting")
+        yaml.dump(merged_data, open(decode_file, "w"))
+        print("Done Decrypting")
     elif action == "view":
         yaml.dump(merged_data, sys.stdout)
     elif action == "edit":
-        if decode_file:
-            yaml.dump(merged_data, open(decode_file, "w"))
-            os.system(envs.editor + ' ' + f"{decode_file}")
+        yaml.dump(merged_data, open(decode_file, "w"))
+        os.system(envs.editor + ' ' + f"{decode_file}")
     # These Helm commands are only different due to passed variables
     elif (action == "install") or (action == "template") or (action == "upgrade") or (action == "lint") or (action == "diff"):
-        if decode_file:
-            yaml.dump(merged_data, open(decode_file, "w"))
-            leftovers = ' '.join(leftovers)
+        yaml.dump(merged_data, open(decode_file, "w"))
+        leftovers = ' '.join(leftovers)
 
-            try:
-                cmd = f"helm {args.action} {leftovers} -f {decode_file}"
-                if args.verbose is True:
-                    print(f"About to execute command: {cmd}")
-                subprocess.run(cmd, shell=True, check=True)
-            except subprocess.CalledProcessError as ex:
-                cleanup(args, envs)
-                sys.exit(ex.returncode)
-            except Exception as ex:
-                print(f"Error: {ex}")
-                cleanup(args, envs)
-
+        try:
+            cmd = f"helm {args.action} {leftovers} -f {decode_file}"
+            if args.verbose is True:
+                print(f"About to execute command: {cmd}")
+            subprocess.run(cmd, shell=True, check=True)
+        except subprocess.CalledProcessError as ex:
             cleanup(args, envs)
+            sys.exit(ex.returncode)
+        except Exception as ex:
+            print(f"Error: {ex}")
+            cleanup(args, envs)
+
+        cleanup(args, envs)
 
     return 0
 
