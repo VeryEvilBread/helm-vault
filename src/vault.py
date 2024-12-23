@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import re
 import ruamel.yaml
 import hvac
@@ -84,7 +82,7 @@ def parse_args(args):
 
     # Install Help
     install = subparsers.add_parser("install", help="Wrapper that decrypts YAML files before running helm install")
-    install.add_argument("-f", "--values", type=str, dest="yaml_file", help="The encrypted YAML file to decrypt on the fly")
+    install.add_argument("-f", "--values", type=str, dest="yaml_files", nargs="*", help="The encrypted YAML file to decrypt on the fly")
     install.add_argument("-d", "--deliminator", type=str, help="The secret deliminator used when parsing. Default: \"changeme\"")
     install.add_argument("-vt", "--vaulttemplate", type=str, help="Substring with path to vault key instead of deliminator. Default: \"VAULT:\"")
     install.add_argument("-mp", "--mountpoint", type=str, help="The Vault Mount Point Default: \"secret/data\"")
@@ -95,7 +93,7 @@ def parse_args(args):
 
     # Template Help
     template = subparsers.add_parser("template", help="Wrapper that decrypts YAML files before running helm install")
-    template.add_argument("-f", "--values", type=str, dest="yaml_file", help="The encrypted YAML file to decrypt on the fly")
+    template.add_argument("-f", "--values", type=str, dest="yaml_files", nargs="*", help="The encrypted YAML file to decrypt on the fly")
     template.add_argument("-d", "--deliminator", type=str, help="The secret deliminator used when parsing. Default: \"changeme\"")
     template.add_argument("-vt", "--vaulttemplate", type=str, help="Substring with path to vault key instead of deliminator. Default: \"VAULT:\"")
     template.add_argument("-mp", "--mountpoint", type=str, help="The Vault Mount Point Default: \"secret/data\"")
@@ -105,7 +103,7 @@ def parse_args(args):
 
     # Upgrade Help
     upgrade = subparsers.add_parser("upgrade", help="Wrapper that decrypts YAML files before running helm install")
-    upgrade.add_argument("-f", "--values", type=str, dest="yaml_file", help="The encrypted YAML file to decrypt on the fly")
+    upgrade.add_argument("-f", "--values", type=str, dest="yaml_files", nargs="*", help="The encrypted YAML file to decrypt on the fly")
     upgrade.add_argument("-d", "--deliminator", type=str, help="The secret deliminator used when parsing. Default: \"changeme\"")
     upgrade.add_argument("-vt", "--vaulttemplate", type=str, help="Substring with path to vault key instead of deliminator. Default: \"VAULT:\"")
     upgrade.add_argument("-mp", "--mountpoint", type=str, help="The Vault Mount Point Default: \"secret/data\"")
@@ -115,7 +113,7 @@ def parse_args(args):
 
     # Lint Help
     lint = subparsers.add_parser("lint", help="Wrapper that decrypts YAML files before running helm install")
-    lint.add_argument("-f", "--values", type=str, dest="yaml_file", help="The encrypted YAML file to decrypt on the fly")
+    lint.add_argument("-f", "--values", type=str, dest="yaml_files", nargs="*", help="The encrypted YAML file to decrypt on the fly")
     lint.add_argument("-d", "--deliminator", type=str, help="The secret deliminator used when parsing. Default: \"changeme\"")
     lint.add_argument("-vt", "--vaulttemplate", type=str, help="Substring with path to vault key instead of deliminator. Default: \"VAULT:\"")
     lint.add_argument("-mp", "--mountpoint", type=str, help="The Vault Mount Point Default: \"secret/data\"")
@@ -125,7 +123,7 @@ def parse_args(args):
 
     # Diff Help
     diff = subparsers.add_parser("diff", help="Wrapper that decrypts YAML files before running helm diff")
-    diff.add_argument("-f", "--values", type=str, dest="yaml_file", help="The encrypted YAML file to decrypt on the fly")
+    diff.add_argument("-f", "--values", type=str, dest="yaml_files", nargs="*", help="The encrypted YAML file to decrypt on the fly")
     diff.add_argument("-d", "--deliminator", type=str, help="The secret deliminator used when parsing. Default: \"changeme\"")
     diff.add_argument("-vt", "--vaulttemplate", type=str, help="Substring with path to vault key instead of deliminator. Default: \"VAULT:\"")
     diff.add_argument("-mp", "--mountpoint", type=str, help="The Vault Mount Point Default: \"secret/data\"")
@@ -356,12 +354,11 @@ def main(argv=None):
     parsed = parse_args(argv)
     args, leftovers = parsed.parse_known_args(argv)
 
-    yaml_file = args.yaml_file
-    data = load_yaml(yaml_file)
+    yaml_files = args.yaml_files
     action = args.action
 
     envs = Envs(args)
-
+    
     if action == "clean":
         cleanup(args, envs)
 
@@ -369,22 +366,39 @@ def main(argv=None):
     yaml.preserve_quotes = True
     secret_data = load_secret(args) if args.action == 'enc' else None
 
-    for path, key, value in dict_walker(envs.secret_delim, data, args, envs, secret_data):
+    merged_data = {}
+    if yaml_files:
+        for yaml_file in yaml_files:
+            data = load_yaml(yaml_file)
+            def merge_dicts(dict1, dict2):
+                for key, value in dict2.items():
+                    if key in dict1:
+                        if isinstance(dict1[key], dict) and isinstance(value, dict):
+                            merge_dicts(dict1[key], value)
+                        else:
+                            dict1[key] = value
+                    else:
+                        dict1[key] = value
+                return dict1
+
+            merged_data = merge_dicts(merged_data,data)
+    
+    for path, key, value in dict_walker(envs.secret_delim, merged_data, args, envs, secret_data):
         print("Done")
     
-    decode_file = '.'.join(filter(None, [yaml_file, envs.environment, 'dec']))
+    decode_file = '.'.join(filter(None, [yaml_files[0], envs.environment, 'dec']))
 
     if action == "dec":
-        yaml.dump(data, open(decode_file, "w"))
+        yaml.dump(merged_data, open(decode_file, "w"))
         print("Done Decrypting")
     elif action == "view":
-        yaml.dump(data, sys.stdout)
+        yaml.dump(merged_data, sys.stdout)
     elif action == "edit":
-        yaml.dump(data, open(decode_file, "w"))
+        yaml.dump(merged_data, open(decode_file, "w"))
         os.system(envs.editor + ' ' + f"{decode_file}")
     # These Helm commands are only different due to passed variables
     elif (action == "install") or (action == "template") or (action == "upgrade") or (action == "lint") or (action == "diff"):
-        yaml.dump(data, open(decode_file, "w"))
+        yaml.dump(merged_data, open(decode_file, "w"))
         leftovers = ' '.join(leftovers)
 
         try:
